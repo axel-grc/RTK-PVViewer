@@ -39,13 +39,55 @@ def GetCornerPoints(dataBounds, p, u, v):
 
     return [p11, p10, p01, p00]
 
+def GetGeometryType(geometry):
+    """
+    Determine the type of geometry.
+
+	param: geometry: Input geometry describing the reconstruction.
+
+	return: One of the following string type:
+            ["CONE", "PARALLEL"]
+    """
+
+    if geometry.GetSourceToDetectorDistances()[0] == 0:
+        return "PARALLEL"
+    else:
+        return "CONE"
+
+def GetSourceDisplay(geometry, referenceDisplay, renderView):
+    """
+    Greate and return source display based on the reconstruction type.
+
+    param: geometry: Input geometry describing the reconstruction.
+    param: referenceDisplay: Object display used as a reference for scaling
+                             the output source display.
+    param: renderView: The render view to add the display into.
+
+	return: Paraview's display for the source
+    """
+
+    geometryType = GetGeometryType(geometry)
+
+    if(geometryType == "CONE"):
+        source = Sphere(guiName='Source')
+        sourceDisplay = Show(source, renderView)
+        sourceDisplay.Scale =[50,50,50]
+        return sourceDisplay
+
+    if(geometryType == "PARALLEL"):
+        source = Plane(guiName='Source')
+        sourceDisplay = Show(source, renderView)
+        bounds = referenceDisplay.Input.GetDataInformation().DataInformation.GetBounds()
+        sourceDisplay.Scale =[bounds[1] - bounds[0], bounds[3] - bounds[2], bounds[5] - bounds[4]]
+        return sourceDisplay
+
 def UpdateFrame(timeStep):
     """
     Update animation frame
 
     param: timeStep: Current step in the animation sequence. [0.0-1.0]
     """
-    global geometry, sourceDisplay, projectionsDisplay, projections, line0, line1, line2, line3
+    global geometry, sourceDisplay, projectionsDisplay, line0, line1, line2, line3
     
     # Compute current slice
     numberOfProjections = len(geometry.GetGantryAngles())
@@ -60,7 +102,7 @@ def UpdateFrame(timeStep):
 
     # Compute slice position
     m = geometry.GetProjectionCoordinatesToFixedSystemMatrix(currentSlice)
-    bounds = projections.GetDataInformation().DataInformation.GetBounds()
+    bounds = projectionsDisplay.Input.GetDataInformation().DataInformation.GetBounds()
     projorigin = np.array([0.5 *(bounds[0]+bounds[1]), 0.5 *(bounds[2]+bounds[3]), 0.5 *(bounds[4]+bounds[5])] )
     projorigin = np.append(projorigin, [1])
     p = m*projorigin
@@ -88,19 +130,33 @@ def UpdateFrame(timeStep):
     # Update slice orientation
     projectionsDisplay.Orientation = [rX,-rY,0]
 
+    # Update source position
+    sourceDisplay.Orientation = [rX,-rY + 180,0]
+
     # Source-Detector frustum
+    #   Detector points
     projectionCorners = GetCornerPoints(bounds, p, u, v)
 
-    line0.Point1 = sourceDisplay.Position
+    #   Source points
+    sourceBounds = [-0.5 * sourceDisplay.Scale[0], 0.5 * sourceDisplay.Scale[0],
+        -0.5 * sourceDisplay.Scale[1], 0.5 * sourceDisplay.Scale[1]]
+    if GetGeometryType(geometry) == "CONE":
+        sourceBounds[0] *= 0.25
+        sourceBounds[1] *= 0.25
+        sourceBounds[2] *= 0.25
+        sourceBounds[3] *= 0.25
+    sourceCorners = GetCornerPoints(sourceBounds, sourcePosition, u, v)
+
+    line0.Point1 = sourceCorners[0]
     line0.Point2 = projectionCorners[0]
 
-    line1.Point1 = sourceDisplay.Position
+    line1.Point1 = sourceCorners[1]
     line1.Point2 = projectionCorners[1]
 
-    line2.Point1 = sourceDisplay.Position
+    line2.Point1 = sourceCorners[2]
     line2.Point2 = projectionCorners[2]
 
-    line3.Point1 = sourceDisplay.Position
+    line3.Point1 = sourceCorners[3]
     line3.Point2 = projectionCorners[3]
 
     # Update slice position
@@ -185,9 +241,7 @@ geometryReader.GenerateOutputInformation()
 geometry = geometryReader.GetOutputObject()
 
 ## Source ##
-source = Sphere(guiName='Source')
-sourceDisplay = Show(source, renderView)
-sourceDisplay.Scale =[50,50,50]
+sourceDisplay = GetSourceDisplay(geometry, projectionsDisplay, renderView)
 
 ## Volume ##
 volumeUY = MetaFileSeriesReader(FileNames=[volumeFileName], guiName='Volume_XY')
