@@ -54,6 +54,21 @@ def GetGeometryType(geometry):
     else:
         return "CONE"
 
+def GetDetectorType(geometry):
+    """
+    Determine the type of detector used for the reconstruction.
+
+	param: geometry: Input geometry describing the reconstruction.
+
+	return: One of the following string type:
+            ["FLAT", "CYLINDRICAL"]
+    """
+
+    if geometry.GetRadiusCylindricalDetector() != 0:
+        return "CYLINDRICAL"
+    else:
+        return "FLAT"
+
 def GetSourceDisplay(geometry, referenceDisplay, renderView):
     """
     Greate and return source display based on the reconstruction type.
@@ -202,6 +217,17 @@ def OpenFile(fileTypes = "", title = ""):
     root.update()
     return fileName
 
+from tkinter import messagebox
+def MessageDialog(title = "", message = ""):
+    """
+    Prompt a message dialog.
+
+	param: title: Dialog title
+    param: message: The message to display
+    """
+
+    messagebox.showinfo(title, message)
+
 # Main
 if not hasattr(sys, 'argv'):
     sys.argv  = ['']
@@ -328,6 +354,12 @@ cr = cam.GetClippingRange()
 cam.SetClippingRange(cr[0], cr[0] + 5000)
 rv.LockBounds = 1
 Render()
+
+# Warn about detector type
+if GetDetectorType(geometry) != "FLAT":
+    MessageDialog("WARNING",
+	    "WARNING: Only flat detector are supported.\n"
+        "Projections will be represented on a flat panel.")
 
 # Start animation
 animationScene.Play()
