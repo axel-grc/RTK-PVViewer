@@ -10,13 +10,41 @@ from math import atan2
 
 # Helper function returning unit vector
 def unit_vector(vector):
-     """ Returns the unit vector of the vector.  """
-     return vector / np.linalg.norm(vector)
+    """
+    Returns the unit vector of the input vector.
+    """
+    return vector / np.linalg.norm(vector)
 
+def GetCornerPoints(dataBounds, p, u, v):
+    """
+    Compute the 4 corners point position.
 
-# Update animation frame
-#  WARNING: The time step should be in between 0 and 1.
+    :param dataBounds: Input data bounds
+    :param p: Input data position
+    :param u: Input data u direction
+    :param v: Input data v direction
+
+    :return list of 3D points
+    """
+
+    # Compute half extent in the U and V direction
+    eU = 0.5 *(dataBounds[1] - dataBounds[0])
+    eV = 0.5 *(dataBounds[3] - dataBounds[2])
+
+    # Compute corner points
+    p11 = [p[0] + u[0] * eU + v[0] * eV, p[1] + u[1] * eU + v[1] * eV, p[2] + u[2] * eU + v[2] * eV] # [1,1]
+    p10 = [p[0] + u[0] * eU - v[0] * eV, p[1] + u[1] * eU - v[1] * eV, p[2] + u[2] * eU - v[2] * eV] # [1,-1]
+    p01 = [p[0] - u[0] * eU + v[0] * eV, p[1] - u[1] * eU + v[1] * eV, p[2] - u[2] * eU + v[2] * eV] # [-1,1]
+    p00 = [p[0] - u[0] * eU - v[0] * eV, p[1] - u[1] * eU - v[1] * eV, p[2] - u[2] * eU - v[2] * eV] # [-1,-1]
+
+    return [p11, p10, p01, p00]
+
 def UpdateFrame(timeStep):
+    """
+    Update animation frame
+
+    param: timeStep: Current step in the animation sequence. [0.0-1.0]
+    """
     global geometry, sourceDisplay, projectionsDisplay, projections, line0, line1, line2, line3
     
     # Compute current slice
@@ -61,20 +89,19 @@ def UpdateFrame(timeStep):
     projectionsDisplay.Orientation = [rX,-rY,0]
 
     # Source-Detector frustum
-    eX = 0.5 *(bounds[1] - bounds[0])
-    eY = 0.5 *(bounds[3] - bounds[2])
+    projectionCorners = GetCornerPoints(bounds, p, u, v)
 
     line0.Point1 = sourceDisplay.Position
-    line0.Point2 = [p[0] + u[0] * eX + v[0] * eY, p[1] + u[1] * eX + v[1] * eY, p[2] + u[2] * eX + v[2] * eY] # [1,1]
+    line0.Point2 = projectionCorners[0]
 
     line1.Point1 = sourceDisplay.Position
-    line1.Point2 = [p[0] + u[0] * eX - v[0] * eY, p[1] + u[1] * eX - v[1] * eY, p[2] + u[2] * eX - v[2] * eY] # [1,-1]
+    line1.Point2 = projectionCorners[1]
 
     line2.Point1 = sourceDisplay.Position
-    line2.Point2 = [p[0] - u[0] * eX + v[0] * eY, p[1] - u[1] * eX + v[1] * eY, p[2] - u[2] * eX + v[2] * eY] # [-1,1]
+    line2.Point2 = projectionCorners[2]
 
     line3.Point1 = sourceDisplay.Position
-    line3.Point2 = [p[0] - u[0] * eX - v[0] * eY, p[1] - u[1] * eX - v[1] * eY, p[2] - u[2] * eX - v[2] * eY] # [-1,-1]
+    line3.Point2 = projectionCorners[3]
 
     # Update slice position
     offset = -currentSlice * (bounds[5]-bounds[4]) / (numberOfProjections-1) - bounds[4] # WARNING: + bounds[5] vs - bounds[4]
@@ -82,11 +109,15 @@ def UpdateFrame(timeStep):
     sourceDetectorDirection = unit_vector(sourceDetectorDirection)
     projectionsDisplay.Position = [p[0] + offset * sourceDetectorDirection[0], p[1] + offset * sourceDetectorDirection[1], p[2] + offset * sourceDetectorDirection[2]]
 
-
-# Callback called on AnimationCueTickEvent:
-#  Compute the current time step and update animation frame.
-#  WARNING: The computed time step should be in between 0 and 1.
 def callback(caller, *args):
+    """
+    Callback called on AnimationCueTickEvent.
+    Compute the current time step and update animation frame.
+    WARNING: The computed time step should be in between 0 and 1
+
+    param: caller: Paraview's callback caller parameter
+	param: args: Paraview's callback arguments
+    """
     global animationScene
 
     timeStep = (animationScene.AnimationTime - animationScene.StartTime) / (animationScene.EndTime - animationScene.StartTime)
@@ -96,15 +127,20 @@ def callback(caller, *args):
 
     UpdateFrame(timeStep)
 
-# Open file dialog and return selected filename
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
+def OpenFile(fileTypes = "", title = ""):
+    """
+    Open file dialog and return selected filename.
 
-def OpenFile(initialDirectory = "", fileTypes = "", title = ""):
+    param: fileTypes: Type of file to look for
+	param: title: Dialog title
+
+	return: Selected filename string
+    """
     root = Tk()
     root.withdraw()
     fileName = askopenfilename(
-        initialdir = initialDirectory,
         filetypes = fileTypes,
         title = title)
     root.update()
@@ -154,18 +190,18 @@ sourceDisplay = Show(source, renderView)
 sourceDisplay.Scale =[50,50,50]
 
 ## Volume ##
-volumeXY = MetaFileSeriesReader(FileNames=[volumeFileName], guiName='Volume_XY')
-volumeDisplayXY = Show(volumeXY, renderView)
+volumeUY = MetaFileSeriesReader(FileNames=[volumeFileName], guiName='Volume_XY')
+volumeDisplayXY = Show(volumeUY, renderView)
 volumeDisplayXY.SetRepresentationType('Slice') # 'Volume'
 volumeDisplayXY.SliceMode = 'XY Plane' # 'YZ Plane' / 'XZ Plane'
 
-volumeYZ = PassArrays(volumeXY,  guiName='Volume_YZ')
-volumeDisplayYZ = Show(volumeYZ, renderView)
+volumeVZ = PassArrays(volumeUY,  guiName='Volume_YZ')
+volumeDisplayYZ = Show(volumeVZ, renderView)
 volumeDisplayYZ.SetRepresentationType('Slice')
 volumeDisplayYZ.SliceMode = 'YZ Plane'
 
-volumeXZ = PassArrays(volumeXY,  guiName='Volume_XZ')
-volumeDisplayXZ = Show(volumeXZ, renderView)
+volumeUZ = PassArrays(volumeUY,  guiName='Volume_XZ')
+volumeDisplayXZ = Show(volumeUZ, renderView)
 volumeDisplayXZ.SetRepresentationType('Slice')
 volumeDisplayXZ.SliceMode = 'XZ Plane'
 
@@ -186,10 +222,10 @@ SetActiveSource(projections)
 colorTransferFunctionRGBPoints = [-0.060333251953125, 0.231373, 0.298039, 0.752941, 1.366178035736084, 0.865003, 0.865003, 0.865003, 2.792689323425293, 0.705882, 0.0156863, 0.14902]
 opacityTransferFunctionPoints = [0.0, 1.0, 0.5, 0.0, 0.4430769085884094, 0.6000000238418579, 0.5, 0.0, 0.8369230628013611, 0.0, 0.5, 0.0, 0.9292307496070862, 1.0, 0.5, 0.0, 1.070769190788269, 0.0, 0.5, 0.0, 2.0, 0.987500011920929, 0.5, 0.0]
 
-ColorBy(GetDisplayProperties(volumeXY), 'MetaImage', True)
+ColorBy(GetDisplayProperties(volumeUY), 'MetaImage', True)
 GetColorTransferFunction('MetaImage',volumeDisplayXY, True).RGBPoints = colorTransferFunctionRGBPoints
 GetOpacityTransferFunction('MetaImage',volumeDisplayXY, True).Points = opacityTransferFunctionPoints
-volumeDisplayXY.RescaleTransferFunctionToDataRange(False, True)# Rescale color and/or opacity maps used to exactly match data range
+volumeDisplayXY.RescaleTransferFunctionToDataRange(False, True)# Rescale color and/or opacity maps used to eUactly match data range
 volumeDisplayXY.LookupTable.EnableOpacityMapping = 1
 GetColorTransferFunction('MetaImage',volumeDisplayXY, True).ApplyPreset('Grayscale', True)
 
@@ -202,7 +238,7 @@ volumeDisplayXZ.OpacityTransferFunction = volumeDisplayXY.OpacityTransferFunctio
 ColorBy(GetDisplayProperties(projections), 'MetaImage', True)
 GetColorTransferFunction('MetaImage',projectionsDisplay, True).RGBPoints = colorTransferFunctionRGBPoints
 GetOpacityTransferFunction('MetaImage',projectionsDisplay, True).Points = opacityTransferFunctionPoints
-projectionsDisplay.RescaleTransferFunctionToDataRange(False, True)# Rescale color and/or opacity maps used to exactly match data range
+projectionsDisplay.RescaleTransferFunctionToDataRange(False, True)# Rescale color and/or opacity maps used to eUactly match data range
 projectionsDisplay.LookupTable.EnableOpacityMapping = 1
 GetColorTransferFunction('MetaImage',projectionsDisplay, True).ApplyPreset('X Ray', True)
 
