@@ -96,6 +96,19 @@ def callback(caller, *args):
 
     UpdateFrame(timeStep)
 
+# Open file dialog and return selected filename
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
+
+def OpenFile(initialDirectory = "", fileTypes = "", title = ""):
+    root = Tk()
+    root.withdraw()
+    fileName = askopenfilename(
+        initialdir = initialDirectory,
+        filetypes = fileTypes,
+        title = title)
+    root.update()
+    return fileName
 
 # Main
 if not hasattr(sys, 'argv'):
@@ -104,9 +117,18 @@ if not hasattr(sys, 'argv'):
 if len ( sys.argv ) > 1:
     print(sys.argv[1])
 
-projectionsFileName = 'D:/RTK/RTKReconstructionViewer/Data/projections.mha'
-geometryFileName = 'D:/RTK/RTKReconstructionViewer/Data/geometry.xml'
-volumeFileName = 'D:/RTK/RTKReconstructionViewer/Data/volume.mha'
+# Open input files using tkinter
+projectionsFileName = OpenFile(
+    fileTypes =(("MetaImage", "*.mha *.mhd"),("All Files","*.*")),
+    title = "Open Projections file ...")
+
+geometryFileName = OpenFile(
+    fileTypes =(("Geometry File", "*.xml"),("All Files","*.*")),
+    title = "Open Geometry file ...")
+
+volumeFileName = OpenFile(
+    fileTypes =(("MetaImage", "*.mha *.mhd"),("All Files","*.*")),
+    title = "Open Volume file ...")
 
 # Disable automatic camera reset on 'Show'
 paraview.simple._DisableFirstRenderCameraReset()
