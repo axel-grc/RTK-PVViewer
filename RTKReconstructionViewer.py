@@ -169,6 +169,7 @@ GetColorTransferFunction('MetaImage',volumeDisplayXY, True).RGBPoints = colorTra
 GetOpacityTransferFunction('MetaImage',volumeDisplayXY, True).Points = opacityTransferFunctionPoints
 volumeDisplayXY.RescaleTransferFunctionToDataRange(False, True)# Rescale color and/or opacity maps used to exactly match data range
 volumeDisplayXY.LookupTable.EnableOpacityMapping = 1
+GetColorTransferFunction('MetaImage',volumeDisplayXY, True).ApplyPreset('Grayscale', True)
 
 volumeDisplayYZ.LookupTable = volumeDisplayXY.LookupTable
 volumeDisplayXZ.LookupTable = volumeDisplayXY.LookupTable
@@ -181,6 +182,7 @@ GetColorTransferFunction('MetaImage',projectionsDisplay, True).RGBPoints = color
 GetOpacityTransferFunction('MetaImage',projectionsDisplay, True).Points = opacityTransferFunctionPoints
 projectionsDisplay.RescaleTransferFunctionToDataRange(False, True)# Rescale color and/or opacity maps used to exactly match data range
 projectionsDisplay.LookupTable.EnableOpacityMapping = 1
+GetColorTransferFunction('MetaImage',projectionsDisplay, True).ApplyPreset('X Ray', True)
 
 ## Animation ##
 animationScene = GetAnimationScene()
