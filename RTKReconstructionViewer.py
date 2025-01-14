@@ -110,7 +110,8 @@ def UpdateFrame(timeStep):
 
     # Update source position
     sourcePosition = geometry.GetSourcePosition(currentSlice)
-    sourceDisplay.Position = [sourcePosition[0], sourcePosition[1], sourcePosition[2]]
+    sourceDisplay.Translation = [sourcePosition[0], sourcePosition[1], sourcePosition[2]]
+
     
     # Update current slice
     projectionsDisplay.Slice = currentSlice
@@ -178,7 +179,7 @@ def UpdateFrame(timeStep):
     offset = -currentSlice * (bounds[5]-bounds[4]) / (numberOfProjections-1) - bounds[4] # WARNING: + bounds[5] vs - bounds[4]
     sourceDetectorDirection = [p[0] - sourcePosition[0], p[1] - sourcePosition[1], p[2] - sourcePosition[2]]
     sourceDetectorDirection = unit_vector(sourceDetectorDirection)
-    projectionsDisplay.Position = [p[0] + offset * sourceDetectorDirection[0], p[1] + offset * sourceDetectorDirection[1], p[2] + offset * sourceDetectorDirection[2]]
+    projectionsDisplay.Translation = [p[0] + offset * sourceDetectorDirection[0], p[1] + offset * sourceDetectorDirection[1], p[2] + offset * sourceDetectorDirection[2]]
 
 def callback(caller, *args):
     """
@@ -328,7 +329,7 @@ animationScene.EndTime = 1
 animationScene.FramesPerTimestep = 1
 animationScene.Loop = 0
 animationScene.PlayMode = 'Sequence' # 'Real Time' / 'Sequence'
-animationScene.Duration = 7
+animationScene.EndTime = 7
 animationScene.NumberOfFrames = len(geometry.GetGantryAngles())
 
 # Setup animation callback
